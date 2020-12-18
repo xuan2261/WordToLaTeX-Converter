@@ -5,19 +5,40 @@ Writing manual LaTeX code may take a lot of the valuable time and is not easy im
 WordToLaTeX1.0  does exactly the same with ease and save the time and effort of the responsible. This takes a bunch of documents as input and produce documents with all the MathType equations converted to KaTeX codes at their corresponding locations in the document file.
 This project extends the functionality of the content creation process at Evelyn.
 
-## [KaTeX](https://github.com/KaTeX/KaTeX)
-KaTeX is a fast, easy-to-use JavaScript library for TeX math rendering on the web.
+## [LaTeX](https://www.latex-project.org/)
+LaTeX is a high-quality typesetting system; it includes features designed for the production of technical and scientific documentation. LaTeX is the de facto standard for the communication and publication of scientific documents. LaTeX is available as free software.
 
- * **Fast:** KaTeX renders its math synchronously and doesn't need to reflow the page. See how it compares to a competitor in [this speed test](http://www.intmath.com/cg5/katex-mathjax-comparison.php).
- * **Print quality:** KaTeX's layout is based on Donald Knuth's TeX, the gold standard for math typesetting.
- * **Self contained:** KaTeX has no dependencies and can easily be bundled with your website resources.
- * **Server side rendering:** KaTeX produces the same output regardless of browser or environment, so you can pre-render expressions using Node.js and send them as plain HTML.
+LaTeX, which is pronounced «Lah-tech» or «Lay-tech» (to rhyme with «blech» or «Bertolt Brecht»), is a document preparation system for high-quality typesetting. It is most often used for medium-to-large technical or scientific documents but it can be used for almost any form of publishing.
 
-KaTeX is compatible with all major browsers, including Chrome, Safari, Firefox, Opera, Edge, and IE 11.
+LaTeX is not a word processor! Instead, LaTeX encourages authors not to worry too much about the appearance of their documents but to concentrate on getting the right content. For example, consider this document:
+```
+Cartesian closed categories and the price of eggs
+Jane Doe
+September 1994
+Hello world!
+```
+To produce this in most typesetting or word-processing systems, the author would have to decide what layout to use, so would select (say) 18pt Times Roman for the title, 12pt Times Italic for the name, and so on. This has two results: authors wasting their time with designs; and a lot of badly designed documents!
 
-KaTeX supports much (but not all) of LaTeX and many LaTeX packages. See the [list of supported functions](https://katex.org/docs/supported.html).
-
-Try out KaTeX [on the demo page](https://katex.org/#demo)!
+LaTeX is based on the idea that it is better to leave document design to document designers, and to let authors get on with writing documents. So, in LaTeX you would input this document as:
+```
+\documentclass{article}
+\title{Cartesian closed categories and the price of eggs}
+\author{Jane Doe}
+\date{September 1994}
+\begin{document}
+   \maketitle
+   Hello world!
+\end{document}
+```
+## LaTeX Features
+- Typesetting journal articles, technical reports, books, and slide presentations.
+- Control over large documents containing sectioning, cross-references, tables and figures.
+- Typesetting of complex mathematical formulas.
+- Advanced typesetting of mathematics with AMS-LaTeX.
+- Automatic generation of bibliographies and indexes.
+- Multi-lingual typesetting.
+- Inclusion of artwork, and process or spot colour.
+- Using PostScript or Metafont fonts.
 
 ## [MathType SDK](https://docs.wiris.com/en/mathtype/mathtype_desktop/mathtype-sdk)
 The MathType SDK is primarily for developers who want to explore the advanced capabilities of MathType. The SDK also includes documentation about equation formats and other related information. The MathType SDK is available to developers who:
@@ -30,8 +51,8 @@ The MathType SDK is primarily for developers who want to explore the advanced ca
 
 The MathType SDK is available for both Windows and Mac and has been updated to the latest releases, 6.9 for Windows, 6.7 for Mac. There are no changes for MathType 7.x.
 
-## Word To KaTeX 2.0 Getting Started!
-The Word To KaTeX 2.0 has the following dependencies:
+## WordToLaTeX1.0 Getting Started!
+The WordToLaTeX1.0 has the following dependencies:
 | Programming language | C#.NET |
 | ------ | ------ |
 |Object Librariy | Microsoft.Office.Interop.Word |
@@ -112,10 +133,9 @@ public void Dispose()
 ### WordToKaTeX.cs
 WordToKaTeX.cs is the driver program which consists of the following two main modules:
 * `ExtractMathTypes()`
-* `RefineSolutions()`
 
 `ExtractMahTypes()`:
-This module extracts all the embedded MathType objects (OLEObjects) form the Word documents in `LaTeX` format. Later, the `LaTeX` is converted to the `KaTeX` format by doing certain changes in the generated `LaTeX` codes. Post the `KaTeX` Conversion, the MathType objects are replaced with their corresponding codes.
+This module extracts all the embedded MathType objects (OLEObjects) form the Word documents in `LaTeX` format by iterating through all the embedded OLEObjects. The OLEObjects are identified if they are MathType equations and later converted to LaTeX. Later the MathType objects are replaced with their converted corresponding LaTeX codes.
 
 To open MS Word file use the following:
 ```sh 
@@ -124,7 +144,7 @@ Microsoft.Office.Interop.Word.Document doc = app.Documents.Open(FileName, ReadOn
 ```
 Here, FineName is the `FileName` is the path to the file which is supposed to be opened to proceed further. We can iterate over the files using any loop.
 
-This modules uses the following lists in order to store the `LaTeX` code, `KaTeX` codes and `MathType` objects respectively.
+This modules uses the following lists in order to store the `LaTeX` code, ` Processed LaTeX` codes and `MathType` objects respectively.
 ```sh
 List<string> mathMLList = new List<string>();
 List<string> KatexList = new List<string>();
@@ -158,72 +178,20 @@ Here,
 * `ranges.Add(ishape.Range)` is adding the current MathType object `ishape` to the `ranges` list for replacing the MathType to their corresponding `KaTeX` code.
 * `ishape.Delete()` deletes the object form the Word file.
 
-The following section of the code converts the generated `LaTeX` into `KaTeX` code by doing the certain replacements. All the generated `LaTeX` codes are kept in the `MathMLList` and after the conversion, all the `KaTeX` codes are kept in `KaTeXList`.
+The following section of the code adds the opening and closing markers to the generated `LaTeX` codes:
 
 ```sh
 foreach (string item in mathMLList)
 {
-	string citem = item.ToString().Replace(Environment.NewLine, "").Replace(@"\[", @"\(").Replace(@"\]", @"\)").Replace(@"\begin{align}", @"\begin{aligned}").Replace(@"\end{align}", @"\end{aligned}").Replace("{}", "").Replace("&", "").Replace("=", "&=").Replace("{&=}", "{=}");
-	Regex regex = new Regex(@"text{(\s)*");
-	foreach (Match ItemMatch in regex.Matches(citem))
-	{
-		string filler = String.Concat(Enumerable.Repeat(@"\,", (ItemMatch.Value.Length - 5)));
-		textBox1.AppendText(citem + " <> " + ItemMatch.Value + "-" + "text{" + filler + Environment.NewLine);
-		if (citem.Contains(ItemMatch.Value))
-		{
-			textBox1.AppendText("True" + Environment.NewLine);
-		}
-		var regex1 = new Regex(Regex.Escape(ItemMatch.Value));
-		citem = regex1.Replace(citem, "text{" + filler, 1);
-	}
-
-	if (citem.Contains(@"\begin{matrix}"))
-	{
-		citem = citem.Replace(@"\begin{matrix}", @"\begin{array}{cccccccc}").Replace(@"\end{matrix}", @"\end{array}").Replace("   ", "").Replace("  ", "&&").Replace(@"&\\", @"\\\\").Replace("frac", "cfrac").Replace(@"&\\\\", @"\\\\").Replace(@"\\\\\end", @"\\\end").Replace("cdots", "cdots&&").Replace("vdots", "vdots&&").Replace("ddots", "ddots&&");
-		er.WriteLine("WARNING! - " + Path.GetFileName(file).ToString() + ": Check if the matrix at index " + (mathMLList.IndexOf(item) + 1).ToString() + " in the solution file contains any verticle line or horizontal line in it. Please use the matrix guidelines for KaTeX to resolve the issue");
-	}
-
-	if (citem.ToString().Contains("aligned"))
-	{
-		//do nothing
-	}
-	else
-	{
-		citem = citem.Replace("&=", "=").Replace(@"&\ne", @"\ne");
-	}
-
-	citem = citem.Replace(@"{\rm E}", @"\Epsilon").Replace(@"\varepsilon", @"\epsilon").Replace(@"\ne", @"\ne ").Replace(@"\ne g", @"\neg ").Replace(@"\le", @"\le ").Replace("le ft", "left").Replace(@"\approx", @"&\approx ").Replace(@"\partial", @"\partial ").Replace("cdot", "cdot ").Replace("cdot s", "cdots").Replace(@"\Delta", @"\Delta ").Replace(@"\delta", @"\delta ").Replace(@"%", @"\%").Replace(@"\ \ \ \ \ \ \ \ \ \ \ \ \ \ \", " ");
-
-	string tempStr = citem.Replace(@"\(", "").Replace(@"\)", "");
-	Regex reg = new Regex(@"\(([^)]+)\)*");
-	foreach (Match ItemMatch in reg.Matches(tempStr))
-	{
-		string temp = ItemMatch.Value.Replace("&=", "=");
-		citem = citem.Replace(ItemMatch.Value, temp);
-	}
-	Regex reg1 = new Regex(@"\{([^)]+)\}}*");
-	foreach (Match ItemMatch in reg.Matches(tempStr))
-	{
-		string temp = ItemMatch.Value.Replace("&=", "=");
-		citem = citem.Replace(ItemMatch.Value, temp);
-	}
-
-	if (citem.Substring(0, 1) == "$")
-	{
-		citem = citem.Trim('$');
-		citem = @"\(" + citem + @"\)";
-	}
-
-	citem = citem.Replace(@"\cdot", @"\cdot ").Replace(@"\cdot s", @"\cdots").Replace(@"&&\\", @"\\").Replace(@"\ne g", @"\neg ");
-
-	if (isChemistry.Checked)
-	{
-		citem = citem.Replace(@"\Xi", @"\overrightharpoon{\,_\leftharpoondown}");
-	}
-
-	KatexList.Add(citem);
+    string citem = item.ToString().Replace(Environment.NewLine, "").Replace(@"\[", @"$$").Replace(@"\]", @"$$");
+    KatexList.Add(citem);
 }
 ```
+Here, we have used `$$` as opening and closing markers of the `LaTeX` code. We can use the following as per our requirement:
+* `\[` and `\]`
+* `\(` and `\)`
+* `$` and `$`
+
 To replace the MathType Objects with their corresponding KaTeX codes, use the following:
 ```sh
 int mcount = 0;
@@ -233,27 +201,7 @@ foreach (MSWord.Range r in ranges)
 	mcount++;
 }
 ```
-### RefineSolutions.cs
-This module checks if the MathType Objects are inline or block. If the MathType equations are block, it replaces the starting and ending of the KaTeX codes as `\[` and `\]` respectively and if inline, the starting and ending of KaTeX codes remains same as `\(` and `\)` respectively.
 
-The following section of the code replaces the concern form the Word document:
-```sh
-MSWord.Application app = new MSWord.Application();
-MSWord.Document doc = app.Documents.Open(file, ReadOnly: false);
-
-foreach (MSWord.Section sec in doc.Sections)
-{
-	foreach (MSWord.Paragraph para in sec.Range.Paragraphs)
-	{
-		string currLine = para.Range.Text.ToString();
-		if(currLine.StartsWith(@"\("))
-		{
-			currLine = currLine.Replace(@"\(", @"\[").Replace(@"\)", @"\]");
-			para.Range.Text = currLine;
-		}
-	}
-}
-```
 
 This software also includes zipping of directories and files in one go.
 To make ZIP of directories in a directory, use the following piece of code:
@@ -274,7 +222,7 @@ You need to include the `System.IO.Compression` in references of your project wi
 ### Todos
 
  - Write MORE Tests
- - Updates on new Issues with `KaTeX` codes.
+ - Updates on new Issues with `LaTeX` codes.
 
 License
 ----
