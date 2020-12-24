@@ -10,6 +10,8 @@ using Sys = System.IO;
 using System.Text.RegularExpressions;
 using MSWord = Microsoft.Office.Interop.Word;
 using System.IO.Compression;
+using System.Threading;
+using System.Drawing;
 
 namespace WordToKaTeX
 {
@@ -31,9 +33,92 @@ namespace WordToKaTeX
         {
             statusBox.Clear();
             ExtractMathTypes();
+            ExtractImages();
             MessageBox.Show("Done!","Word To LaTeX Converter");
         }
         
+        public void ExtractImages()
+        {
+            statusLabel.Text = "Extracting Images...";
+            statusBox.Clear();
+            string refineSolutionPath = outputPathTextBox.Text + @"\" + "Done Files\\";
+            DirectoryInfo di = new DirectoryInfo(refineSolutionPath);
+
+            int tFiles = di.GetFiles("*.docx", SearchOption.AllDirectories).Length;
+            //int tFiles = Directory.GetFiles(MathMLPath,".docx").Length;
+            string[] allfiles = Directory.GetFiles(refineSolutionPath, "*.docx", SearchOption.AllDirectories);
+            statusBar.Minimum = 0;
+            statusBar.Maximum = tFiles;
+            MSWord.Application app = new MSWord.Application();
+            int counter = 0;
+            foreach (string file in allfiles)
+            {
+                counter += 1;
+                statusBar.Value = counter;
+                try
+                {
+                    MSWord.Document doc = app.Documents.Open(file, ReadOnly: false);
+                    statusBox.AppendText(Path.GetFileName(file).ToString().Replace(".docx", "").ToString() + Environment.NewLine);
+
+                    for (var i = 1; i <= app.ActiveDocument.InlineShapes.Count; i++)
+                    {
+                        // closure
+                        var inlineShapeId = i;
+
+                        // parameterized thread start
+                        var thread = new Thread(() => SaveInlineShapeToFile(inlineShapeId, app, file, refineSolutionPath));
+
+                        // STA is needed in order to access the clipboard
+                        thread.SetApartmentState(ApartmentState.STA);
+                        thread.Start();
+                        thread.Join();
+                    }
+
+                    doc.Close();
+                }
+                catch (Exception ex)
+                {
+                    //MessageBox.Show(ex.ToString());
+                    statusBox.AppendText(ex.Message.ToString() + Environment.NewLine);
+                }
+            }
+
+
+            app.Quit();
+        }
+
+        protected static void SaveInlineShapeToFile(int inlineShapeId, MSWord.Application wordApplication, string fileName, string path)
+        {
+            string outputSolutionPath = path;
+            string filename = fileName;
+            // Get the shape, select, and copy it to the clipboard
+            var inlineShape = wordApplication.ActiveDocument.InlineShapes[inlineShapeId];
+            inlineShape.Select();
+            wordApplication.Selection.Copy();
+
+            // Check data is in the clipboard
+            if (Clipboard.GetDataObject() != null)
+            {
+                var data = Clipboard.GetDataObject();
+
+                // Check if the data conforms to a bitmap format
+                if (data != null && data.GetDataPresent(DataFormats.Bitmap))
+                {
+                    // Fetch the image and convert it to a Bitmap
+                    var image = (Image)data.GetData(DataFormats.Bitmap, true);
+                    var currentBitmap = new Bitmap(image);
+
+                   // string tempPath = outputSolutionPath + "Done Files\\";
+
+                    string tempFilePath =outputSolutionPath + Path.GetFileName(Path.GetDirectoryName(filename)) + "\\Images\\";
+                    if (!Directory.Exists(tempFilePath))
+                        Directory.CreateDirectory(tempFilePath);
+                    currentBitmap.SetResolution(300, 300);
+                    // Save the bitmap to a file
+                    currentBitmap.Save(tempFilePath + String.Format("{0}_{1}.png",Path.GetFileNameWithoutExtension(filename) ,inlineShapeId));
+                }
+            }
+        }
 
         public void ExtractMathTypes()
         {
@@ -154,8 +239,31 @@ namespace WordToKaTeX
 
                                 foreach (string item in mathMLList)
                                 {
-                                    string citem = item.ToString().Replace(Environment.NewLine, "").Replace(@"\[", @"$$").Replace(@"\]", @"$$");
-                                    KatexList.Add(citem);
+                                    string citem = item.ToString().Replace(Environment.NewLine, "").Replace(@"\[", @"$$").Replace(@"\]", @"$$").Replace(@"\begin{align}", @"\begin{aligned}").Replace(@"\end{align}", @"\end{aligned}").Replace(@">",@"\gt ").Replace(@"<",@"\lt ");
+
+                                    if (citem.ToString().Contains("aligned"))
+                                    {
+                                        citem = citem.Replace("&", "");
+                                        citem = citem.Replace("=", "&=");
+
+                                        //string pattern = @"(\{(?>[^{}]+|(?1))*\})";
+                                        //Regex reg = new Regex(pattern);
+
+                                        //foreach (Match ItemMatch in reg.Matches(citem))
+                                        //{
+                                        //    string temp = ItemMatch.Value.Replace("&=", "=");
+                                        //    citem = citem.Replace(ItemMatch.Value, temp);
+                                        //}
+
+
+
+                                    }
+                                        //string pattern = @"(\{(?>[^{}]+|(?1))*\})";
+
+
+
+
+                                        KatexList.Add(citem);
                                 }
 
                                 //---------------
